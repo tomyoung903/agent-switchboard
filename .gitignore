@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug/temp files
+debug.txt
+stderr.txt
+stdout.txt
+debug_screenshots/
+*.log
+
+# Database (local data)
+*.db
+*.sqlite
+
+# Windows
+*.exe
+Thumbs.db
+Desktop.ini
+
+# Secrets/config (users should copy config.example.yaml)
+config.yaml
+config.json
+.env
+
+# OS
+.DS_Store
+
+# Migration artifacts
+window_status/
