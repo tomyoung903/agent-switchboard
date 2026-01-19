@@ -30,7 +30,6 @@ debug_screenshots/
 *.sqlite
 
 # Windows
-*.exe
 Thumbs.db
 Desktop.ini
 
