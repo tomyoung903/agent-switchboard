@@ -1,167 +1,155 @@
 # Agent Switchboard
 
-A Windows notification system for AI agent workflows. Track multiple agent windows, see their status at a glance, and switch focus instantly.
+Agent Switchboard is a Windows notification dashboard for AI-agent workflows. It shows live status updates from Codex sessions, lets you jump back to the relevant window through a `focus:` URL protocol, and uses ntfy as the message bus.
 
-## The Problem
+The current stack is:
 
-When running multiple AI agents (Claude, ChatGPT, Cursor, etc.) across different windows, you lose track of which ones need attention. Alt+Tab cycling is slow and breaks your flow. You need a way to:
-
-- Know when an agent finishes a task
-- See status of all agent windows in one place
-- Switch to any agent window instantly
-
-## How It Works
-
-```
-Your AI agents → ntfy.sh → Notification App → focus: protocol → Window switches
+```text
+Codex session logs -> codex_session_monitor -> ntfy -> Electron app -> focus: protocol -> target window
 ```
 
-1. **Agents publish status** to ntfy.sh (e.g., `claude:project - done`)
-2. **Notification app** displays all agents as clickable bars with status
-3. **Press Enter** to instantly switch to that window via the `focus:` protocol
+## What Is Included
 
-<!-- TODO: Add demo GIF here -->
-
-## Features
-
-- **Real-time status updates** via ntfy.sh SSE subscription
-- **Keyboard-driven UI** - navigate with arrows, switch with Enter
-- **Global hotkey** (Ctrl+,) to toggle visibility
-- **System tray** integration - runs in background
-- **Instant window switching** - 150ms via compiled C# (87% faster than PowerShell)
-- **Status color coding** - done (green), ongoing (blue), addressed (gray)
+- `noti_app_electron/` - the current Electron dashboard.
+- `codex_session_monitor/` - a WSL-side Codex session log monitor and ntfy publisher.
+- `focus-protocol/` - a Windows `focus:` URL protocol handler implemented in C#.
+- `scripts/` - helper scripts for managing the Electron app and Startup folder entries from WSL.
+- `noti_app/` - the older Python/Tkinter dashboard, kept for reference.
+- `config/noti_ntfy.env.example` - ntfy configuration template. Do not commit real credentials.
 
 ## Requirements
 
-- Windows 10/11
-- Python 3.8+ (Windows version with tkinter)
-- WSL (optional, for development)
+- Windows 10/11.
+- WSL for the Codex session monitor.
+- Node.js/npm for the Electron app.
+- Auto-start and window focusing use normal per-user Windows APIs; admin is not required for the Startup folder entry.
 
-## Installation
+## Configure ntfy
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/tomyoung903/agent-switchboard.git
-cd agent-switchboard
-```
-
-### 2. Install Python dependencies
+Create a unique ntfy topic and configure both the Windows app and WSL publisher with the same values.
 
 ```bash
-pip install pillow pystray pynput requests
+cp config/noti_ntfy.env.example ~/.config/noti_ntfy.env
 ```
 
-### 3. Install the focus: protocol (PowerShell as Administrator)
+For the Electron runtime, copy the same edited file to:
+
+```text
+C:\noti_app_electron\noti_ntfy.env
+```
+
+The config supports:
+
+```text
+NTFY_SERVER=https://ntfy.sh
+NTFY_TOPIC=agent_switchboard_demo_topic_change_me
+NTFY_TOKEN=
+NTFY_USERNAME=
+NTFY_PASSWORD=
+NTFY_AUTH_HEADER=
+NOTI_HOST_ID=
+```
+
+If your topic is public, auth can be empty. For protected topics, set either `NTFY_TOKEN`, `NTFY_USERNAME`/`NTFY_PASSWORD`, or `NTFY_AUTH_HEADER`.
+
+## Electron App
+
+Install dependencies and run from `noti_app_electron/`:
+
+```bash
+npm install
+npm start
+```
+
+For Tom's Windows runtime layout, the app runs from:
+
+```text
+C:\noti_app_electron
+```
+
+The launcher reads `C:\noti_app_electron\noti_ntfy.env` and starts:
+
+```text
+C:\noti_app_electron\node_modules\electron\dist\electron.exe C:\noti_app_electron\main.js
+```
+
+Useful WSL helpers:
+
+```bash
+bash scripts/noti_app_electron.sh restart
+bash scripts/noti_app_electron.sh status
+```
+
+## Codex Session Monitor
+
+Run from WSL:
+
+```bash
+cd codex_session_monitor
+./codex_session_monitor.sh restart
+./codex_session_monitor.sh status
+./codex_session_monitor.sh logs
+```
+
+The monitor scans:
+
+```text
+~/.codex/sessions/**/rollout-*.jsonl
+```
+
+It publishes status messages like:
+
+```text
+window_name | thread_name - function_call_output
+window_name | thread_name - task_complete
+```
+
+The Electron app parses those messages, updates its local database, and displays current session state.
+
+## focus: Protocol
+
+Install the protocol handler from PowerShell:
 
 ```powershell
 cd focus-protocol
 .\install-focus-protocol-exe.ps1
 ```
 
-This registers the `focus:` URL protocol so clicking `focus:chrome` brings Chrome to front.
+This registers:
 
-### 4. Configure ntfy topic
-
-Edit `noti_app/src/ntfy_listener.py` and change:
-
-```python
-TOPIC_NAME = "your_unique_topic_name"  # Make this unique to you
+```text
+focus:<window_name>
 ```
 
-### 5. Run the app
+to launch `FocusWindow.exe`, which matches the target against window title/process rules in `focus-protocol/match-rules.json`.
+
+The Electron app uses this protocol when you press Enter on a selected row or use the configured focus hotkey.
+
+## Startup
+
+To add the Electron app to the current user's Windows Startup folder:
 
 ```bash
-cd noti_app
-python main.py
+bash scripts/windows_startup_folder.sh add \
+  --name "Noti App Electron" \
+  --target 'C:\noti_app_electron\launch_noti.bat' \
+  --working-dir 'C:\noti_app_electron'
 ```
 
-The app starts minimized to system tray. Press `Ctrl+,` to show/hide.
-
-## Sending Notifications
-
-From any script or agent, send notifications via ntfy.sh:
+Inspect it:
 
 ```bash
-# Simple window registration
-curl -d "myagent" ntfy.sh/your_topic_name
-
-# With status
-curl -d "myagent - done" ntfy.sh/your_topic_name
-curl -d "claude:project - ongoing" ntfy.sh/your_topic_name
+bash scripts/windows_startup_folder.sh status --name "Noti App Electron"
 ```
 
-### Message Format
+For the WSL-side Codex monitor, prefer a Windows Scheduled Task or a Startup shortcut that launches `wsl.exe` explicitly. Do not rely on interactive shell aliases for daemon startup.
 
-```
-window_name - status
-```
+## Security
 
-- `window_name`: Used to match and focus the window (matches title or process name)
-- `status`: Optional - `done`, `ongoing`, `addressed`, or any custom text
-
-## Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `Ctrl+,` | Toggle window visibility (global) |
-| `↑` / `↓` | Navigate between agents |
-| `Tab` | Next agent |
-| `Enter` | Switch to selected agent's window |
-| `A` | Mark as addressed |
-| `Delete` | Remove from list |
-| `Home` / `End` | Jump to first/last |
-| Any letter | Hide to tray |
-
-## Configuration
-
-Key settings in `noti_app/src/notification_app.py`:
-
-```python
-# Window spawn position (adjust for your monitor setup)
-SPAWN_X = 1500
-SPAWN_Y = -1100  # Negative for monitor above primary
-
-# Window position mode
-WINDOW_POSITION = "upper-monitor-center"  # or "bottom-right", "center", etc.
-```
-
-Database location in `noti_app/src/db.py`:
-
-```python
-# Windows AppData (for proper SQLite locking)
-DB_DIR = Path(appdata) / "noti_app"
-```
-
-## Architecture
-
-```
-noti_app/
-├── main.py              # Entry point
-├── src/
-│   ├── notification_app.py  # Tkinter UI, keyboard handling
-│   ├── ntfy_listener.py     # SSE subscription to ntfy.sh
-│   ├── db.py                # SQLite storage
-│   ├── styles.py            # UI theming
-│   └── ui_utils.py          # Rounded corners, etc.
-
-focus-protocol/
-├── FocusWindow.exe      # Pre-compiled window switcher
-├── FocusWindow.cs       # C# source (uses Windows API)
-├── install-*.ps1        # Registry setup scripts
-```
-
-## Use Cases
-
-- **AI Agent Dashboard**: Monitor Claude Code, Cursor, ChatGPT windows
-- **Build Notifications**: Alert when long builds complete
-- **Task Switching**: Quick keyboard-driven window management
-- **Remote Notifications**: Receive alerts from servers/CI pipelines
+- Never commit `noti_ntfy.env`, `.env`, tokens, passwords, or private ntfy topics.
+- `config/noti_ntfy.env.example` is intentionally safe to commit.
+- The default topic in source is a placeholder and should be changed before real use.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
-
----
-
-*This is a demo project showing what's possible with ntfy.sh + custom URL protocols. Fork and customize for your own workflow!*
+MIT License - see [LICENSE](LICENSE).

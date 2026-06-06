@@ -37,6 +37,13 @@ Desktop.ini
 config.yaml
 config.json
 .env
+noti_ntfy.env
+*.env.local
+
+# Electron
+node_modules/
+.webpack/
+out/
 
 # OS
 .DS_Store

@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Noti App</title>
+  </head>
+  <body>
+    <div id="container">
+      <div id="drag-handle" title="Drag window"></div>
+      <div id="limit-panel">
+        <input id="limit-input" type="number" min="0" step="1" placeholder="All">
+        <button id="limit-apply" type="button" title="Apply visible limit">Set</button>
+        <button id="limit-all" type="button" title="Show all windows">All</button>
+        <button id="limit-close" type="button" title="Close limit editor (Esc)">Close</button>
+      </div>
+      <div id="search-panel">
+        <input id="search-input" type="text" placeholder="Search all windows" autocomplete="off">
+        <span id="search-summary"></span>
+        <button id="search-close" type="button" title="Close search (Esc)">Close</button>
+      </div>
+      <div id="window-list"></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </body>
+</html>

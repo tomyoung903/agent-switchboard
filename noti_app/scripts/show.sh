@@ -6,6 +6,9 @@
 echo "Sending show trigger to notification app..."
 
 # Send a special message that will popup the window
-curl -d "show:window - trigger" https://ntfy.sh/tom_noti_app_abc123xyz
+NTFY_SERVER="${NTFY_SERVER:-https://ntfy.sh}"
+NTFY_TOPIC="${NTFY_TOPIC:-agent_switchboard_demo_topic_change_me}"
+
+curl -d "show:window - trigger" "${NTFY_SERVER%/}/$NTFY_TOPIC"
 
 echo "Window should now be visible"

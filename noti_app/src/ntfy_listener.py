@@ -22,8 +22,8 @@ import platform
 sys.path.insert(0, str(Path(__file__).parent))
 
 # Configuration
-NTFY_SERVER = "https://ntfy.sh"
-TOPIC_NAME = "tom_noti_app_abc123xyz"
+NTFY_SERVER = os.environ.get("NTFY_SERVER", "https://ntfy.sh").rstrip("/")
+TOPIC_NAME = os.environ.get("NTFY_TOPIC", "agent_switchboard_demo_topic_change_me")
 TOPIC_URL = f"{NTFY_SERVER}/{TOPIC_NAME}"
 
 # Import database module

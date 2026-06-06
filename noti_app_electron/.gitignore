@@ -1,0 +1,8 @@
+node_modules/
+.webpack/
+dist/
+out/
+*.log
+.DS_Store
+Thumbs.db
+noti_ntfy.env
