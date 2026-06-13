@@ -2,6 +2,8 @@
 
 Agent Switchboard is a Windows notification dashboard for AI-agent workflows. It shows live status updates from Codex sessions, lets you jump back to the relevant window through a `focus:` URL protocol, and uses ntfy as the message bus.
 
+![Agent Switchboard workflow](docs/agent-switchboard-flow.svg)
+
 The current stack is:
 
 ```text
